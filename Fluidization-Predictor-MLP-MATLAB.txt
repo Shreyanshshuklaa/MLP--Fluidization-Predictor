@@ -1,0 +1,90 @@
+The MATLAB code for plotting is as follows:
+% Data Input and Preparation
+data = [
+    308.94, 0.32, 0.0015, 8.35e-17, 0.149, 0.3314;
+    67598.42, 1.28, 0.0074, 1.995, 0.220, 2.243;
+    372.52, 0.45, 0.0012, 4.45e-16, 0.297, 0.8223;
+    60995.96, 1.43, 0.0121, 1.008, 0.290, 2.518;
+    465, 7.6, 6, 0.453, 0.453, 0.441;
+    165, 11.3, 8, 0.247, 0.247, 0.211;
+    360, 11.3, 8, 0.449, 0.449, 0.409;
+    465, 11.3, 8, 0.590, 0.590, 0.514;
+    165, 16.7, 10, 0.312, 0.312, 0.280;
+    276, 16.7, 10, 0.488, 0.488, 0.442
+];
+
+inputs = data(:, 1:4)';
+targets = data(:, 5:6)';
+
+% Creating an MLP Network
+hiddenLayerSize = 10;
+net = fitnet(hiddenLayerSize, 'trainlm');
+
+% Improve training parameters
+net.trainParam.epochs = 1000;
+net.trainParam.min_grad = 1e-7;
+net.trainParam.max_fail = 10;
+
+% Data Division
+net.divideParam.trainRatio = 70/100;
+net.divideParam.valRatio = 15/100;
+net.divideParam.testRatio = 15/100;
+
+% Training the Network
+[net, tr] = train(net, inputs, targets);
+
+% Network Testing and Predictions
+train_output = net(inputs(:, tr.trainInd));
+test_output = net(inputs(:, tr.testInd));
+all_output = net(inputs);
+
+% Extracting Targeted Data
+train_target = targets(:, tr.trainInd);
+test_target = targets(:, tr.testInd);
+
+% Enhanced Plotting
+figure('Position', [100, 100, 800, 600]);
+
+% Actual vs predicted U_mf plot
+subplot(2,1,1);
+plot(train_target(1,:), train_output(1,:), 'bo', 'MarkerFaceColor', 'b', 'MarkerSize', 8);
+hold on;
+plot(test_target(1,:), test_output(1,:), 'ro', 'MarkerFaceColor', 'r', 'MarkerSize', 8);
+plot([0 max(targets(1,:))], [0 max(targets(1,:))], 'k--', 'LineWidth', 1.5); % Unity line
+xlabel('Actual U_{mf} (m/s)', 'FontSize', 12);
+ylabel('Predicted U_{mf} (m/s)', 'FontSize', 12);
+title('Actual vs Predicted U_{mf}', 'FontSize', 14, 'FontWeight', 'bold');
+legend('Training', 'Testing', 'Ideal Prediction', 'Location', 'northwest');
+grid on;
+axis square;
+set(gca, 'FontSize', 11);
+
+% Actual vs predicted P_max plot
+subplot(2,1,2);
+plot(train_target(2,:), train_output(2,:), 'bo', 'MarkerFaceColor', 'b', 'MarkerSize', 8);
+hold on;
+plot(test_target(2,:), test_output(2,:), 'ro', 'MarkerFaceColor', 'r', 'MarkerSize', 8);
+plot([0 max(targets(2,:))], [0 max(targets(2,:))], 'k--', 'LineWidth', 1.5); % Unity line
+xlabel('Actual ΔP_{max} (kPa)', 'FontSize', 12);
+ylabel('Predicted ΔP_{max} (kPa)', 'FontSize', 12);
+title('Actual vs Predicted ΔP_{max}', 'FontSize', 14, 'FontWeight', 'bold');
+legend('Training', 'Testing', 'Ideal Prediction', 'Location', 'northwest');
+grid on;
+axis square;
+set(gca, 'FontSize', 11);
+
+% performance metrics calculation
+mse_Umf = mse(targets(1,:) - all_output(1,:));
+mse_DeltaP = mse(targets(2,:) - all_output(2,:));
+r2_Umf = 1 - sum((targets(1,:) - all_output(1,:)).^2) / sum((targets(1,:) - mean(targets(1,:))).^2);
+r2_DeltaP = 1 - sum((targets(2,:) - all_output(2,:)).^2) / sum((targets(2,:) - mean(targets(2,:))).^2);
+
+% Displaying  metrics on the figure
+annotation('textbox', [0.15 0.95 0.7 0.05], ...
+    'String', sprintf('MSE (U_{mf}): %.4e    R^2 (U_{mf}): %.4f    MSE (ΔP_{max}): %.4e    R^2 (ΔP_{max}): %.4f', ...
+    mse_Umf, r2_Umf, mse_DeltaP, r2_DeltaP), ...
+    'EdgeColor', 'none', ...
+    'HorizontalAlignment', 'center', ...
+    'FontSize', 10);
+
+set(gcf, 'Color', 'white');
